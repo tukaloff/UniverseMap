@@ -26,24 +26,35 @@ public class UniverseMap {
      * @param args the command line arguments
      */
     public static void main(String[] args) throws IOException, Exception {
-        System.out.println(Color.BLACK.getRGB());
-        System.out.println(Color.WHITE.getRGB());
         ClusterGenerator generator = new ClusterGenerator();
-        generator.setRadius(8);
-        generator.setCoeffIntencity(4);
-        Cluster cluster = generator.getCluster();
-        BufferedImage bi;// = Utils.getBufferedImage(cluster.getMap());
-        //Utils.saveImage("cluster/Cluster", bi);
-        for (int i = 0; i < 50; i++) {
+        generator.setRadius(16);
+        generator.setCoeffIntencity(2);
+        Cluster cluster;
+        BufferedImage bi;
+        long start, stop;
+        for (int i = 0; i < 30; i++) {
+            start = System.currentTimeMillis();
             cluster = generator.generate();
+            stop = System.currentTimeMillis();
+            System.out.print(i + " -> " + (stop - start) + ":\t");
             bi = Utils.getBufferedImage(cluster.getMap());
             Utils.saveImage("cluster/Cluster" + (i < 10 ? "0" : "") + i, bi);
+        }
+        for (int i = 1; i < 512 / 16 / 2; i++) {
+            cluster = generator.reinforce(1);
+            bi = Utils.getBufferedImage(cluster.getMap());
+            Utils.saveImage("reinforced/reinforced" + (i < 10?"0":"") + i, bi);
         }
         File[] f = new File("cluster/").listFiles();
         String[] g = new String[f.length + 1];
         for (int i = 0; i < f.length; i++) g[i] = f[i].getAbsolutePath();
         g[g.length - 1] = "cluster.gif";
-        System.out.println(g.length + Arrays.toString(g));
+        GifSequenceWriter.main(g);
+        
+        f = new File("reinforced/").listFiles();
+        g = new String[f.length + 1];
+        for (int i = 0; i < f.length; i++) g[i] = f[i].getAbsolutePath();
+        g[g.length - 1] = "reinforced.gif";
         GifSequenceWriter.main(g);
     }
     
