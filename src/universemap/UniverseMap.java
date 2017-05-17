@@ -5,14 +5,8 @@
  */
 package universemap;
 
-import java.awt.Color;
 import java.awt.image.BufferedImage;
-import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
 import universemap.generators.ClusterGenerator;
 import universemap.levels.Cluster;
 
@@ -26,8 +20,7 @@ public class UniverseMap {
      * @param args the command line arguments
      */
     public static void main(String[] args) throws IOException, Exception {
-        ClusterGenerator generator = new ClusterGenerator();
-        generator.setRadius(16);
+        ClusterGenerator generator = new ClusterGenerator(16);
         generator.setCoeffIntencity(2);
         Cluster cluster;
         BufferedImage bi;
@@ -40,22 +33,17 @@ public class UniverseMap {
             bi = Utils.getBufferedImage(cluster.getMap());
             Utils.saveImage("cluster/Cluster" + (i < 10 ? "0" : "") + i, bi);
         }
-        for (int i = 1; i < 512 / 16 / 2; i++) {
-            cluster = generator.reinforce(1);
+        generator.getCluster().setMap(generator.crop(generator.getCluster().getMap()));
+        for (int i = 1; i <= 512 / 16; i*=2) {
+            start = System.currentTimeMillis();
+            cluster = generator.reinforce(i);
+            stop = System.currentTimeMillis();
+            System.out.print(i + " -> " + (stop - start) + ":\t");
             bi = Utils.getBufferedImage(cluster.getMap());
             Utils.saveImage("reinforced/reinforced" + (i < 10?"0":"") + i, bi);
         }
-        File[] f = new File("cluster/").listFiles();
-        String[] g = new String[f.length + 1];
-        for (int i = 0; i < f.length; i++) g[i] = f[i].getAbsolutePath();
-        g[g.length - 1] = "cluster.gif";
-        GifSequenceWriter.main(g);
-        
-        f = new File("reinforced/").listFiles();
-        g = new String[f.length + 1];
-        for (int i = 0; i < f.length; i++) g[i] = f[i].getAbsolutePath();
-        g[g.length - 1] = "reinforced.gif";
-        GifSequenceWriter.main(g);
+        Utils.saveGif("cluster");
+        Utils.saveGif("reinforced");
     }
     
 }

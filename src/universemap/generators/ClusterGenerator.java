@@ -6,7 +6,6 @@
 package universemap.generators;
 
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import universemap.levels.Cluster;
 
@@ -21,22 +20,19 @@ public class ClusterGenerator {
     private int radius;
     private int coeffIntencity;
     
-    public ClusterGenerator() {
-        this(512);
+    public ClusterGenerator(int radius) {
+        this(512, radius);
     }
     
-    public ClusterGenerator(int size) {
-        this.size = size;
-        this.cluster = new Cluster(size);
+    public ClusterGenerator(int size, int radius) {
+        this.radius = radius;
+        this.size = size + this.radius * 4;
+        this.cluster = new Cluster(this.size);
         randomGenerate(cluster.getMap());
     }
     
     public Cluster getCluster() {
         return cluster;
-    }
-    
-    public void setRadius(int radius) {
-        this.radius = radius;
     }
     
     public void setCoeffIntencity(int coeff) {
@@ -49,7 +45,7 @@ public class ClusterGenerator {
     }
     
     public Cluster reinforce(int x) {
-        this.cluster.setMap(filterTwo(cluster.getMap(), radius * x));
+        this.cluster.setMap(normalize(filterTwo(cluster.getMap(), radius * x)));
         return this.cluster;
     }
     
@@ -87,27 +83,17 @@ public class ClusterGenerator {
     }
     
     private int[][] filterTwo(int[][] map, int blockSize) {
+        System.out.print(.7 - 1f / (blockSize / radius == 1 ? 2 : blockSize / radius));
+        System.out.print("\t");
         int[][] newMap = new int[map.length][map[0].length];
-        List<List<int[][]>> blocks = new ArrayList<>();
-        for (int i = 0; i < map.length / (blockSize); i++) {
-            List<int[][]> blockRow = new ArrayList<>();
-            for (int j = 0; j < map[i * blockSize].length / (blockSize); j++) {
-                int[][] block = new int[blockSize][blockSize];
-                for (int m = 0; m < block.length; m++) {
-                    for (int n = 0; n < block[m].length; n++) {
-                        block[m][n] = map[i * blockSize + m][j * blockSize + n];
-                    }
-                }
-                blockRow.add(block);
-            }
-            blocks.add(blockRow);
-        }
+        List<List<int[][]>> blocks = this.getBlocks(map, blockSize);
         blocks.parallelStream().forEach((blockRow)->{
             blockRow.parallelStream().forEach((block)-> {
                 List<int[]> brightest = new ArrayList<>();
                 for (int i = 0; i < block.length; i++) {
                     for (int j = 0; j < block[i].length; j++) {
-                        if (block[i][j] > 255 * .5)
+                        if (block[i][j] > 255 * (.8 - 1f / (blockSize / radius == 1 ? 2 : blockSize / radius)))
+                                //&& block[i][j] < (255 - 255 * (1 - 1/blockSize)))
                             brightest.add(new int[]{i, j});
                     }
                 }
@@ -119,6 +105,12 @@ public class ClusterGenerator {
                         else return -1;
                     }
                 });
+                List<Line> lines = new ArrayList<>();
+                for (int i = 0; i < brightest.size(); i++) 
+                    for (int j = 0; j < brightest.size(); j++)
+                        lines.add(new Line(brightest.get(i)[0], brightest.get(i)[1]
+                                , brightest.get(j)[0], brightest.get(j)[1]));
+                
                 for (int i = 0; i < brightest.size(); i++) {
                     for (int j = 0; j < brightest.size(); j++) {
                         if (i == j) continue;
@@ -132,8 +124,8 @@ public class ClusterGenerator {
                                 if (((m - b1[0]) * (b2[1] - b1[1]) - (b2[0] - b1[0]) * (n - b1[1])) == 0) {
                                     int len1 = (int) Math.sqrt(Math.pow(m - b1[0], 2) + Math.pow(n - b1[1], 2));
                                     len1++;
-                                    if (len / 3.0 * 2 > len1) {
-                                        int newBright = (int) (block[b1[0]][b1[1]] * (len1 / (len / 3.0 * 2)));
+                                    if (len * .66 > len1) {
+                                        int newBright = (int) (block[b1[0]][b1[1]] * (1 - len1 / (len * .66)));
                                         block[m][n] = block[m][n] > newBright ? block[m][n] : newBright;
                                     }
                                 }        
@@ -155,7 +147,7 @@ public class ClusterGenerator {
                                     int len1 = (int) Math.sqrt(Math.pow(m - b1[0], 2) + Math.pow(n - b1[1], 2));
                                     len1++;
                                     if (len / 3.0 * 2 > len1) {
-                                        int newBright = (int) (block[b1[0]][b1[1]] * (len1 / (len / 3.0 * 2)));
+                                        int newBright = (int) (block[b1[0]][b1[1]] * (1 - len1 / (len / 3.0 * 2)));
                                         block[m][n] = block[m][n] > newBright ? block[m][n] : newBright;
                                     }
                                 }        
@@ -165,6 +157,28 @@ public class ClusterGenerator {
                 }
             });
         });
+        return this.assembleBlocks(blocks, newMap);
+    }
+    
+    private List<List<int[][]>> getBlocks(int[][] map, int blockSize) {
+        List<List<int[][]>> blocks = new ArrayList<>();
+        for (int i = 0; i < map.length / (blockSize); i++) {
+            List<int[][]> blockRow = new ArrayList<>();
+            for (int j = 0; j < map[i * blockSize].length / (blockSize); j++) {
+                int[][] block = new int[blockSize][blockSize];
+                for (int m = 0; m < block.length; m++) {
+                    for (int n = 0; n < block[m].length; n++) {
+                        block[m][n] = map[i * blockSize + m][j * blockSize + n];
+                    }
+                }
+                blockRow.add(block);
+            }
+            blocks.add(blockRow);
+        }
+        return blocks;
+    }
+    
+    private int[][] assembleBlocks(List<List<int[][]>> blocks, int[][] newMap) {
         for (int i = 0; i < blocks.size(); i++) {
             for (int j = 0; j < blocks.get(i).size(); j++) {
                 int[][] block = blocks.get(i).get(j);
@@ -188,5 +202,13 @@ public class ClusterGenerator {
             for (int j = 0; j < row.length; j++)
                 row[j] *= k;
         return map;
+    }
+
+    public int[][] crop(int[][] map) {
+        int[][] newMap = new int[map.length - radius * 4][map[0].length - radius * 4];
+        for (int i = radius * 2; i < map.length - radius * 2; i++) 
+            for (int j = radius * 2; j < map[i].length - radius * 2; j++)
+                newMap[i - radius * 2][j - radius * 2] = map[i][j];
+        return newMap;
     }
 }

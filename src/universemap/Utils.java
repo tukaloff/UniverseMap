@@ -51,4 +51,12 @@ public class Utils {
         File outputfile = new File(name + ".png");
         ImageIO.write(bi, "png", outputfile);
     }
+    
+    public static void saveGif(String name) throws Exception {
+        File[] f = new File(name + "/").listFiles();
+        String[] g = new String[f.length + 1];
+        for (int i = 0; i < f.length; i++) g[i] = f[i].getAbsolutePath();
+        g[g.length - 1] = name + ".gif";
+        GifSequenceWriter.main(g);
+    }
 }
